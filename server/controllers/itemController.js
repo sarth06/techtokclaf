@@ -499,7 +499,7 @@ async function enableSmartAlert(req, res) {
 }
 
 /**
- * Internal: Trigger smart alert notifications for an newly-created item.
+ * Internal: Trigger smart alert notifications for a newly-created item.
  */
 async function triggerSmartAlerts(newItem) {
   try {

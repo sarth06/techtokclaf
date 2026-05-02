@@ -257,13 +257,14 @@ async function updateClaim(req, res) {
         claim.item_id
       );
     } else {
-      // Deduct 2 credits from claimant for failed claim
-      await deductCredits(claim.claimant_id, 2);
+      // Deduct 2 credits from claimant for failed claim (best-effort; claimant may have 0 credits)
+      const deducted = await deductCredits(claim.claimant_id, 2);
+      const creditMsg = deducted ? ' 2 credits deducted.' : ' (Insufficient credits — no deduction.)';
 
       await createNotification(
         claim.claimant_id,
         'claim_rejected',
-        `Your claim for "${claim.item_title}" was rejected. 2 credits deducted.`,
+        `Your claim for "${claim.item_title}" was rejected.${creditMsg}`,
         claim.item_id
       );
     }

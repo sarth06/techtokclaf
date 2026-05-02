@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS claims (
   item_id INT NOT NULL,
   claimant_id INT NOT NULL,
   answers JSON DEFAULT NULL,
-  confidence_score DECIMAL(4,3) DEFAULT NULL,
+  confidence_score DECIMAL(4,3) NOT NULL DEFAULT 0.000 CHECK (confidence_score BETWEEN 0.000 AND 1.000),
   status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
   attempts INT NOT NULL DEFAULT 1,
   proof_url VARCHAR(500) DEFAULT NULL,

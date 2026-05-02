@@ -44,6 +44,15 @@ const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts, please try again later.' },
 });
 
+// Permissive limiter for static HTML navigation (browser page loads)
+const staticLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
 app.use(bodyParser.json({ limit: '5mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -54,18 +63,19 @@ app.use('/firebase', express.static(path.join(__dirname, '..', 'firebase')));
 // ---------------------------------------------------------------------------
 // API Routes — apply rate limiting
 // ---------------------------------------------------------------------------
-// Auth-sensitive routes get stricter limiting
+// Stricter limits on routes that modify data or perform auth operations
 app.use('/items', authLimiter, itemRoutes);
 app.use('/claims', authLimiter, claimRoutes);
-app.use('/notifications', apiLimiter, notificationRoutes);
+// Notifications are read-heavy; use the same authenticated limiter for consistency
+app.use('/notifications', authLimiter, notificationRoutes);
 // Top-level match routes (GET /matches/:itemId, POST /matches/instant)
-app.use('/matches', apiLimiter, require('./routes/matches'));
+app.use('/matches', authLimiter, require('./routes/matches'));
 
 // ---------------------------------------------------------------------------
 // Catch-all: serve SPA for HTML navigation routes (not API)
 // ---------------------------------------------------------------------------
-app.get('*', (req, res, next) => {
-  // Let API errors through rather than returning HTML
+app.get('*', staticLimiter, (req, res, next) => {
+  // Let API 404s propagate rather than returning HTML
   if (req.path.startsWith('/items') || req.path.startsWith('/claims') ||
       req.path.startsWith('/notifications') || req.path.startsWith('/matches')) {
     return next();
