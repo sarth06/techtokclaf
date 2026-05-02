@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — TechTokClaf</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-icon">🔍</div>
+      <h1>TechTokClaf</h1>
+      <p>Campus Lost &amp; Found</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <div class="auth-tab active" data-tab="login">Sign In</div>
+      <div class="auth-tab" data-tab="signup">Sign Up</div>
+    </div>
+
+    <!-- Login Form -->
+    <form id="login-form">
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" class="form-control" placeholder="you@campus.edu" required />
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" class="form-control" placeholder="••••••••" required />
+      </div>
+      <div id="login-error" class="text-sm" style="color:var(--danger);margin-bottom:.75rem;display:none"></div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="login-btn">
+        Sign In
+      </button>
+    </form>
+
+    <!-- Sign Up Form -->
+    <form id="signup-form" class="hidden">
+      <div class="form-group">
+        <label for="signup-email">Email</label>
+        <input type="email" id="signup-email" class="form-control" placeholder="you@campus.edu" required />
+      </div>
+      <div class="form-group">
+        <label for="signup-password">Password</label>
+        <input type="password" id="signup-password" class="form-control" placeholder="Min 6 characters" required minlength="6" />
+      </div>
+      <div class="form-group">
+        <label for="signup-confirm">Confirm Password</label>
+        <input type="password" id="signup-confirm" class="form-control" placeholder="Repeat password" required />
+      </div>
+      <div id="signup-error" class="text-sm" style="color:var(--danger);margin-bottom:.75rem;display:none"></div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="signup-btn">
+        Create Account
+      </button>
+    </form>
+
+    <p class="text-center text-sm mt-4">
+      <a href="/" style="color:var(--primary)">← Back to Home</a>
+    </p>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="/firebase/firebaseConfig.js"></script>
+  <script src="/app.js"></script>
+  <script>
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    // Tab switching
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const which = tab.dataset.tab;
+        document.getElementById('login-form').classList.toggle('hidden', which !== 'login');
+        document.getElementById('signup-form').classList.toggle('hidden', which !== 'signup');
+      });
+    });
+
+    // Redirect if already logged in
+    auth.onAuthStateChanged(user => {
+      if (user) window.location.href = '/dashboard.html';
+    });
+
+    // Login
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      const errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+      try {
+        await auth.signInWithEmailAndPassword(
+          document.getElementById('login-email').value.trim(),
+          document.getElementById('login-password').value
+        );
+        window.location.href = '/dashboard.html';
+      } catch (err) {
+        errEl.textContent = friendlyAuthError(err.code);
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+      }
+    });
+
+    // Sign Up
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('signup-btn');
+      const errEl = document.getElementById('signup-error');
+      errEl.style.display = 'none';
+      const pw = document.getElementById('signup-password').value;
+      const cf = document.getElementById('signup-confirm').value;
+      if (pw !== cf) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.style.display = 'block';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Creating account…';
+      try {
+        await auth.createUserWithEmailAndPassword(
+          document.getElementById('signup-email').value.trim(), pw
+        );
+        window.location.href = '/dashboard.html';
+      } catch (err) {
+        errEl.textContent = friendlyAuthError(err.code);
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    });
+
+    function friendlyAuthError(code) {
+      const map = {
+        'auth/user-not-found': 'No account found with this email.',
+        'auth/wrong-password': 'Incorrect password.',
+        'auth/email-already-in-use': 'Email already registered. Please sign in.',
+        'auth/weak-password': 'Password must be at least 6 characters.',
+        'auth/invalid-email': 'Invalid email address.',
+        'auth/too-many-requests': 'Too many attempts. Please try again later.',
+      };
+      return map[code] || 'Authentication failed. Please try again.';
+    }
+  </script>
+</body>
+</html>

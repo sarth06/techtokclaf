@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Report Item — TechTokClaf</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">🔍 TechTokClaf</div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard.html"><span class="icon">📊</span> Dashboard</a>
+      <a href="/report.html" class="active"><span class="icon">➕</span> Report Item</a>
+      <a href="/dashboard.html#my-items"><span class="icon">📦</span> My Items</a>
+      <a href="/dashboard.html#claims"><span class="icon">📋</span> Claims</a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="email" id="sidebar-email">Loading…</div>
+      <div class="credits" id="sidebar-credits"></div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="top-header">
+      <div class="page-title">Report Item</div>
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="window.history.back()">← Back</button>
+      </div>
+    </header>
+
+    <div class="content-area" style="max-width:700px;margin:0 auto">
+      <div class="card">
+        <div class="card-header">
+          <span id="form-title">Report a Lost / Found Item</span>
+        </div>
+        <div class="card-body">
+          <form id="report-form" novalidate>
+            <input type="hidden" id="item-id" />
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Type *</label>
+                <select id="item-type" class="form-control" required>
+                  <option value="">— Select —</option>
+                  <option value="lost">🔴 Lost</option>
+                  <option value="found">🟢 Found</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Category *</label>
+                <select id="item-category" class="form-control" required>
+                  <option value="">— Select —</option>
+                  <option value="Electronics">Electronics</option>
+                  <option value="Books & Notes">Books &amp; Notes</option>
+                  <option value="Clothing">Clothing</option>
+                  <option value="Accessories">Accessories</option>
+                  <option value="ID & Cards">ID &amp; Cards</option>
+                  <option value="Keys">Keys</option>
+                  <option value="Bag & Wallet">Bag &amp; Wallet</option>
+                  <option value="Sports">Sports</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Title *</label>
+              <input type="text" id="item-title" class="form-control" placeholder="e.g. Blue Samsung Galaxy S22" required maxlength="255" />
+            </div>
+
+            <div class="form-group">
+              <label>Description *</label>
+              <textarea id="item-desc" class="form-control" placeholder="Describe the item in detail…" required maxlength="2000"></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Location *</label>
+                <input type="text" id="item-location" class="form-control" placeholder="e.g. Library, Block A" required maxlength="255" />
+              </div>
+              <div class="form-group">
+                <label>Date *</label>
+                <input type="date" id="item-date" class="form-control" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Image URL <span style="color:var(--text-light)">(optional)</span></label>
+              <input type="url" id="item-image" class="form-control" placeholder="https://…" maxlength="500" />
+            </div>
+
+            <!-- Hidden verification fields (for found items especially) -->
+            <details style="margin-bottom:1rem">
+              <summary style="cursor:pointer;font-size:.875rem;font-weight:500;color:var(--primary)">
+                🔐 Hidden Verification Fields (optional but recommended)
+              </summary>
+              <div style="margin-top:.75rem;padding:.75rem;background:var(--surface-2);border-radius:var(--radius-sm)">
+                <p class="text-sm" style="margin-bottom:.75rem">
+                  These are kept private and used to verify ownership claims. Add details only the true owner would know.
+                </p>
+                <div class="form-group">
+                  <label>Unique Marks</label>
+                  <input type="text" id="item-marks" class="form-control" placeholder="Scratches, stickers, engravings…" maxlength="500" />
+                </div>
+                <div class="form-group">
+                  <label>Contents / Items inside</label>
+                  <input type="text" id="item-contents" class="form-control" placeholder="What was inside / stored with it?" maxlength="500" />
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Context / Circumstances</label>
+                  <textarea id="item-context" class="form-control" placeholder="When/how did you lose it? Any special context?" style="min-height:70px" maxlength="500"></textarea>
+                </div>
+              </div>
+            </details>
+
+            <div id="form-error" class="text-sm hidden" style="color:var(--danger);margin-bottom:.75rem"></div>
+
+            <div style="display:flex;gap:.75rem;justify-content:flex-end">
+              <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="submit-btn">Submit Report</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="/firebase/firebaseConfig.js"></script>
+<script src="/app.js"></script>
+<script>
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  // Set today's date as default
+  document.getElementById('item-date').valueAsDate = new Date();
+
+  // Check for edit mode (URL param ?edit=<id>)
+  const urlParams = new URLSearchParams(window.location.search);
+  const editId = urlParams.get('edit');
+
+  auth.onAuthStateChanged(async user => {
+    if (!user) { window.location.href = '/login.html'; return; }
+    const token = await user.getIdToken();
+    App.setToken(token);
+
+    // Load user info for sidebar
+    document.getElementById('sidebar-email').textContent = user.email;
+    loadUserCredits(token);
+
+    if (editId) {
+      document.getElementById('form-title').textContent = 'Edit Item';
+      document.getElementById('submit-btn').textContent = 'Save Changes';
+      document.getElementById('item-id').value = editId;
+      await loadItemForEdit(editId, token);
+    }
+  });
+
+  async function loadUserCredits(token) {
+    try {
+      const r = await fetch('/items/stats', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await r.json();
+      // Fetch user profile via a workaround — use notifications endpoint
+      // We just show credits from the decoded token if available
+    } catch (_) {}
+  }
+
+  async function loadItemForEdit(id, token) {
+    try {
+      const r = await fetch(`/items/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) throw new Error('Failed to load item');
+      const item = await r.json();
+      document.getElementById('item-type').value = item.type || '';
+      document.getElementById('item-category').value = item.category || '';
+      document.getElementById('item-title').value = item.title || '';
+      document.getElementById('item-desc').value = item.description || '';
+      document.getElementById('item-location').value = item.location || '';
+      document.getElementById('item-date').value = (item.date || '').split('T')[0];
+      document.getElementById('item-image').value = item.image_url || '';
+      document.getElementById('item-marks').value = item.hidden_marks || '';
+      document.getElementById('item-contents').value = item.hidden_contents || '';
+      document.getElementById('item-context').value = item.hidden_context || '';
+    } catch (err) {
+      App.toast('Failed to load item: ' + err.message, 'error');
+    }
+  }
+
+  document.getElementById('report-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('form-error');
+    errEl.classList.add('hidden');
+
+    const id = document.getElementById('item-id').value;
+    const payload = {
+      type: document.getElementById('item-type').value,
+      category: document.getElementById('item-category').value,
+      title: document.getElementById('item-title').value.trim(),
+      description: document.getElementById('item-desc').value.trim(),
+      location: document.getElementById('item-location').value.trim(),
+      date: document.getElementById('item-date').value,
+      image_url: document.getElementById('item-image').value.trim() || null,
+      hidden_marks: document.getElementById('item-marks').value.trim() || null,
+      hidden_contents: document.getElementById('item-contents').value.trim() || null,
+      hidden_context: document.getElementById('item-context').value.trim() || null,
+    };
+
+    // Basic validation
+    const required = ['type', 'category', 'title', 'description', 'location', 'date'];
+    for (const f of required) {
+      if (!payload[f]) {
+        errEl.textContent = `Please fill in the required field: ${f}`;
+        errEl.classList.remove('hidden');
+        return;
+      }
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+
+    try {
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/items/${id}` : '/items';
+      const r = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${App.getToken()}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed to save item');
+      App.toast(id ? 'Item updated!' : 'Item reported successfully! Credits awarded.', 'success');
+      setTimeout(() => window.location.href = '/dashboard.html', 1200);
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = id ? 'Save Changes' : 'Submit Report';
+    }
+  });
+</script>
+</body>
+</html>

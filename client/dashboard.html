@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — TechTokClaf</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- Mobile sidebar overlay -->
+  <div class="sidebar-overlay hidden" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- ── Sidebar ────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">🔍 TechTokClaf</div>
+    <nav class="sidebar-nav">
+      <a href="#" class="active" data-tab="all" onclick="switchTab('all');return false;">
+        <span class="icon">🏠</span> Dashboard
+      </a>
+      <a href="/report.html"><span class="icon">➕</span> Report Item</a>
+      <a href="#" data-tab="my-items" onclick="switchTab('my-items');return false;">
+        <span class="icon">📦</span> My Items
+      </a>
+      <a href="#" data-tab="claims" onclick="switchTab('claims');return false;">
+        <span class="icon">📋</span> Claims
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="email" id="sidebar-email">Loading…</div>
+      <div class="credits" id="sidebar-credits"></div>
+      <button class="btn btn-secondary btn-sm w-full mt-2" onclick="signOut()">Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ───────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- Top header -->
+    <header class="top-header">
+      <div style="display:flex;align-items:center;gap:.75rem">
+        <button class="btn btn-secondary btn-sm" id="menu-btn" onclick="toggleSidebar()" style="display:none">☰</button>
+        <span class="page-title" id="page-title">Dashboard</span>
+      </div>
+      <div class="header-actions">
+        <a href="/report.html" class="btn btn-primary btn-sm">+ Report</a>
+        <button class="notif-btn" id="notif-btn" onclick="toggleNotifications()">
+          🔔<span class="notif-badge hidden" id="notif-badge">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <div class="content-area">
+
+      <!-- Stats Cards -->
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+          <div class="icon blue">📦</div>
+          <div><div class="label">Lost Items</div><div class="value" id="stat-lost">—</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon green">✅</div>
+          <div><div class="label">Found Items</div><div class="value" id="stat-found">—</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon amber">🏆</div>
+          <div><div class="label">Claimed</div><div class="value" id="stat-claimed">—</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon purple">📈</div>
+          <div><div class="label">Recovery Rate</div><div class="value" id="stat-recovery">—</div></div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active" data-tab="all" onclick="switchTab('all')">All Items</div>
+        <div class="tab" data-tab="lost" onclick="switchTab('lost')">Lost</div>
+        <div class="tab" data-tab="found" onclick="switchTab('found')">Found</div>
+        <div class="tab" data-tab="my-items" onclick="switchTab('my-items')">My Items</div>
+        <div class="tab" data-tab="claims" onclick="switchTab('claims')">Claims</div>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="search-bar" id="search-bar">
+        <input type="search" id="search-input" class="form-control search-input" placeholder="🔍 Search items…" oninput="debounceSearch()" />
+        <select id="filter-category" class="form-control" onchange="loadItems()">
+          <option value="">All Categories</option>
+          <option>Electronics</option>
+          <option>Books &amp; Notes</option>
+          <option>Clothing</option>
+          <option>Accessories</option>
+          <option>ID &amp; Cards</option>
+          <option>Keys</option>
+          <option>Bag &amp; Wallet</option>
+          <option>Sports</option>
+          <option>Other</option>
+        </select>
+        <select id="filter-status" class="form-control" onchange="loadItems()">
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="claimed">Claimed</option>
+          <option value="transferred">Transferred</option>
+        </select>
+      </div>
+
+      <!-- Items Grid -->
+      <div id="items-container">
+        <div class="spinner"></div>
+      </div>
+
+      <!-- Claims Panel (hidden by default) -->
+      <div id="claims-container" class="hidden"></div>
+
+    </div><!-- /content-area -->
+  </main><!-- /main-content -->
+
+  <!-- Notification Panel -->
+  <div class="notif-panel" id="notif-panel">
+    <div class="card-header" style="border-bottom:1px solid var(--border)">
+      🔔 Notifications
+      <button class="btn btn-secondary btn-sm" onclick="markAllRead()">Mark All Read</button>
+    </div>
+    <div id="notif-list"></div>
+  </div>
+
+</div><!-- /app-layout -->
+
+<!-- ── Modals ─────────────────────────────────────────────── -->
+
+<!-- Claim Modal -->
+<div class="modal-overlay hidden" id="claim-modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Claim Item</h3>
+      <button class="modal-close" onclick="closeModal('claim-modal-overlay')">×</button>
+    </div>
+    <div class="modal-body" id="claim-modal-body">
+      <div class="spinner"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Match Modal -->
+<div class="modal-overlay hidden" id="match-modal-overlay">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <h3>🤖 AI Matches</h3>
+      <button class="modal-close" onclick="closeModal('match-modal-overlay')">×</button>
+    </div>
+    <div class="modal-body" id="match-modal-body">
+      <div class="spinner"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Image Preview Modal -->
+<div class="modal-overlay hidden" id="img-modal-overlay" onclick="closeModal('img-modal-overlay')">
+  <div style="max-width:90vw;max-height:90vh">
+    <img id="img-modal-src" src="" alt="Preview" style="max-width:90vw;max-height:85vh;border-radius:var(--radius);box-shadow:var(--shadow-lg)" />
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="/firebase/firebaseConfig.js"></script>
+<script src="/app.js"></script>
+<script>
+// ── Globals ──────────────────────────────────────────────
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+let currentUser = null;
+let currentTab = 'all';
+let searchTimer = null;
+let notifPollInterval = null;
+
+// ── Auth Guard ───────────────────────────────────────────
+auth.onAuthStateChanged(async user => {
+  if (!user) { window.location.href = '/login.html'; return; }
+  currentUser = user;
+  const token = await user.getIdToken();
+  App.setToken(token);
+  document.getElementById('sidebar-email').textContent = user.email;
+  loadStats();
+  loadItems();
+  startNotifPolling();
+
+  // Refresh token every 50 min
+  setInterval(async () => {
+    const t = await user.getIdToken(true);
+    App.setToken(t);
+  }, 50 * 60 * 1000);
+});
+
+// ── Mobile menu ──────────────────────────────────────────
+function toggleSidebar() {
+  const s = document.getElementById('sidebar');
+  const o = document.getElementById('sidebar-overlay');
+  s.classList.toggle('open');
+  o.classList.toggle('hidden');
+}
+
+// Show menu btn on mobile
+if (window.innerWidth <= 768) {
+  document.getElementById('menu-btn').style.display = 'inline-flex';
+}
+window.addEventListener('resize', () => {
+  document.getElementById('menu-btn').style.display = window.innerWidth <= 768 ? 'inline-flex' : 'none';
+});
+
+// ── Tab Switching ────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab, .sidebar-nav a[data-tab]').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  const pageTitles = {
+    all: 'All Items', lost: 'Lost Items', found: 'Found Items',
+    'my-items': 'My Items', claims: 'Claims'
+  };
+  document.getElementById('page-title').textContent = pageTitles[tab] || 'Dashboard';
+
+  const itemsContainer = document.getElementById('items-container');
+  const claimsContainer = document.getElementById('claims-container');
+  const searchBar = document.getElementById('search-bar');
+
+  if (tab === 'claims') {
+    itemsContainer.classList.add('hidden');
+    claimsContainer.classList.remove('hidden');
+    searchBar.classList.add('hidden');
+    loadClaims();
+  } else {
+    itemsContainer.classList.remove('hidden');
+    claimsContainer.classList.add('hidden');
+    searchBar.classList.remove('hidden');
+    loadItems();
+  }
+}
+
+// ── Load Stats ───────────────────────────────────────────
+async function loadStats() {
+  try {
+    const data = await App.apiGet('/items/stats');
+    document.getElementById('stat-lost').textContent = data.lost || 0;
+    document.getElementById('stat-found').textContent = data.found || 0;
+    document.getElementById('stat-claimed').textContent = data.claimed || 0;
+    document.getElementById('stat-recovery').textContent = (data.recovery_rate || 0) + '%';
+    if (data.my_credits !== undefined) {
+      document.getElementById('sidebar-credits').textContent = `💰 ${data.my_credits} credits`;
+    }
+  } catch (err) {
+    console.error('loadStats:', err);
+  }
+}
+
+// ── Load Items ───────────────────────────────────────────
+async function loadItems() {
+  const container = document.getElementById('items-container');
+  container.innerHTML = '<div class="spinner"></div>';
+
+  const params = new URLSearchParams();
+  if (currentTab === 'lost' || currentTab === 'found') params.set('type', currentTab);
+  const search = document.getElementById('search-input').value.trim();
+  if (search) params.set('search', search);
+  const cat = document.getElementById('filter-category').value;
+  if (cat) params.set('category', cat);
+  const st = document.getElementById('filter-status').value;
+  if (st) params.set('status', st);
+
+  try {
+    let items = await App.apiGet('/items?' + params.toString());
+
+    // Filter my-items client-side
+    if (currentTab === 'my-items') {
+      items = items.filter(i => i.owner_email === currentUser.email);
+    }
+
+    renderItems(items, container);
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>${err.message}</p></div>`;
+  }
+}
+
+function debounceSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(loadItems, 350);
+}
+
+// ── Render Items ─────────────────────────────────────────
+function renderItems(items, container) {
+  if (!items.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No items found.</p></div>';
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'items-grid';
+
+  items.forEach(item => {
+    const isOwner = item.owner_email === currentUser.email;
+    const isBoosted = item.is_boosted;
+    const statusColors = { active: 'success', claimed: 'info', transferred: 'warning', self_recovered: 'muted' };
+
+    const card = document.createElement('div');
+    card.className = `item-card${isBoosted ? ' boosted' : ''}`;
+    card.innerHTML = `
+      <div class="item-img" onclick="previewImage('${escHtml(item.image_url || '')}')">
+        ${item.image_url
+          ? `<img src="${escHtml(item.image_url)}" alt="${escHtml(item.title)}" loading="lazy" onerror="this.parentElement.innerHTML='📦'" />`
+          : '📦'
+        }
+      </div>
+      <div class="item-body">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.35rem">
+          <div class="item-title truncate">${escHtml(item.title)}</div>
+          <span class="badge badge-${item.type === 'lost' ? 'danger' : 'success'}" style="flex-shrink:0">${item.type}</span>
+        </div>
+        <div class="item-meta">
+          <span>📍 ${escHtml(item.location)}</span>
+          <span>🗓 ${formatDate(item.date)}</span>
+          <span>🏷 ${escHtml(item.category)}</span>
+        </div>
+        <div class="mt-2" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <span class="badge badge-${statusColors[item.status] || 'muted'}">${item.status}</span>
+          ${isBoosted ? '<span class="badge badge-warning">⚡ Boosted</span>' : ''}
+        </div>
+        <p class="text-sm mt-2 truncate" title="${escHtml(item.description)}">${escHtml(item.description)}</p>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-primary btn-sm" onclick="showMatches(${item.id})">🤖 Matches</button>
+        ${!isOwner && item.status === 'active'
+          ? `<button class="btn btn-outline btn-sm" onclick="openClaimModal(${item.id})">📋 Claim</button>`
+          : ''}
+        ${isOwner
+          ? `<a href="/report.html?edit=${item.id}" class="btn btn-secondary btn-sm">✏️ Edit</a>
+             <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">🗑</button>
+             ${item.status === 'active' ? `<button class="btn btn-warning btn-sm" onclick="boostItem(${item.id})">⚡ Boost</button>` : ''}`
+          : ''}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(grid);
+}
+
+// ── Claims ───────────────────────────────────────────────
+async function loadClaims() {
+  const container = document.getElementById('claims-container');
+  container.innerHTML = '<div class="spinner"></div>';
+  try {
+    const claims = await App.apiGet('/claims');
+    if (!claims.length) {
+      container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No claims yet.</p></div>';
+      return;
+    }
+
+    const table = `
+      <div class="card">
+        <div class="card-header">Claims</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.875rem">
+            <thead>
+              <tr style="background:var(--surface-2)">
+                <th style="padding:.75rem;text-align:left">Item</th>
+                <th style="padding:.75rem;text-align:left">Claimant</th>
+                <th style="padding:.75rem;text-align:left">Confidence</th>
+                <th style="padding:.75rem;text-align:left">Status</th>
+                <th style="padding:.75rem;text-align:left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${claims.map(c => {
+                const conf = parseFloat(c.confidence_score || 0);
+                const label = conf >= 0.7 ? 'High' : 'Low';
+                const isOwner = c.item_owner_id !== null && currentUser.email !== c.claimant_email;
+                return `
+                <tr style="border-top:1px solid var(--border)">
+                  <td style="padding:.75rem">${escHtml(c.item_title || '—')} <span class="badge badge-${c.item_type === 'lost' ? 'danger' : 'success'}">${c.item_type || ''}</span></td>
+                  <td style="padding:.75rem">${escHtml(c.claimant_email || '—')}</td>
+                  <td style="padding:.75rem">
+                    <span class="badge badge-${label === 'High' ? 'success' : 'warning'}">${label} (${Math.round(conf * 100)}%)</span>
+                  </td>
+                  <td style="padding:.75rem">
+                    <span class="badge badge-${c.status === 'approved' ? 'success' : c.status === 'rejected' ? 'danger' : 'info'}">${c.status}</span>
+                  </td>
+                  <td style="padding:.75rem;display:flex;gap:.4rem;flex-wrap:wrap">
+                    ${c.status === 'pending' && c.item_owner_id
+                      ? `<button class="btn btn-success btn-sm" onclick="decideClaim(${c.id}, 'approved')">✓ Approve</button>
+                         <button class="btn btn-danger btn-sm" onclick="decideClaim(${c.id}, 'rejected')">✗ Reject</button>`
+                      : '—'}
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    container.innerHTML = table;
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>${err.message}</p></div>`;
+  }
+}
+
+async function decideClaim(claimId, status) {
+  try {
+    await App.apiPut(`/claims/${claimId}`, { status });
+    App.toast(`Claim ${status}!`, status === 'approved' ? 'success' : 'info');
+    loadClaims();
+    loadStats();
+  } catch (err) {
+    App.toast(err.message, 'error');
+  }
+}
+
+// ── Claim Modal ──────────────────────────────────────────
+async function openClaimModal(itemId) {
+  document.getElementById('claim-modal-overlay').classList.remove('hidden');
+  const body = document.getElementById('claim-modal-body');
+  body.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const data = await App.apiGet(`/claims/questions/${itemId}`);
+    const questions = data.questions || [];
+
+    let html = `
+      <p class="text-sm" style="margin-bottom:1rem">Answer the following questions to verify ownership. Your answers will be scored automatically.</p>
+      <form id="claim-form">
+        <input type="hidden" id="claim-item-id" value="${itemId}" />
+    `;
+    questions.forEach(q => {
+      html += `
+        <div class="form-group">
+          <label>${escHtml(q.question)}</label>
+          <textarea name="answer_${q.id}" id="answer-${q.id}" class="form-control" placeholder="Your answer…" rows="2" required></textarea>
+        </div>`;
+    });
+    html += `
+        <div class="form-group">
+          <label>Proof Image URL <span style="color:var(--text-light)">(optional)</span></label>
+          <input type="url" id="claim-proof" class="form-control" placeholder="https://…" />
+        </div>
+        <div id="claim-error" class="text-sm hidden" style="color:var(--danger);margin-bottom:.75rem"></div>
+      </form>
+    `;
+
+    body.innerHTML = html;
+
+    // Add footer buttons
+    const footer = document.createElement('div');
+    footer.className = 'modal-footer';
+    footer.innerHTML = `
+      <button class="btn btn-secondary" onclick="closeModal('claim-modal-overlay')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitClaim(${itemId}, ${JSON.stringify(questions.map(q=>q.id))})">Submit Claim</button>
+    `;
+    document.querySelector('#claim-modal-overlay .modal').appendChild(footer);
+
+  } catch (err) {
+    body.innerHTML = `<p style="color:var(--danger)">${err.message}</p>`;
+  }
+}
+
+async function submitClaim(itemId, questionIds) {
+  const answers = {};
+  for (const id of questionIds) {
+    const el = document.getElementById(`answer-${id}`);
+    if (el) answers[id] = el.value.trim();
+  }
+  const proof = document.getElementById('claim-proof')?.value.trim() || null;
+  const errEl = document.getElementById('claim-error');
+  errEl.classList.add('hidden');
+
+  try {
+    const result = await App.apiPost('/claims', { item_id: itemId, answers, proof_url: proof });
+    closeModal('claim-modal-overlay');
+    const conf = Math.round((result.confidence_score || 0) * 100);
+    App.toast(`Claim submitted! Confidence: ${result.confidence_label} (${conf}%). The finder will review.`, 'success');
+    loadItems();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ── Match Modal ──────────────────────────────────────────
+async function showMatches(itemId) {
+  document.getElementById('match-modal-overlay').classList.remove('hidden');
+  const body = document.getElementById('match-modal-body');
+  body.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const data = await App.apiGet(`/matches/${itemId}`);
+    const matches = data.matches || [];
+
+    if (!matches.length) {
+      body.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">🤖</div>
+          <p>No matches found yet. Check back after more items are reported.</p>
+        </div>
+        <p class="text-xs text-center" style="margin-top:.5rem">
+          You see top ${data.limit_applied} matches. Have >20 credits for top 10.
+          <br>Credits: ${data.user_credits}
+        </p>`;
+      return;
+    }
+
+    let html = `
+      <p class="text-sm" style="margin-bottom:1rem">
+        Found <strong>${matches.length}</strong> potential match(es)
+        (showing top ${data.limit_applied} — ${data.user_credits} credits available).
+      </p>
+      <div class="items-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+    `;
+
+    matches.forEach(m => {
+      html += `
+        <div class="item-card">
+          <div class="item-body">
+            <div class="item-title">${escHtml(m.title)}</div>
+            <div class="item-meta mt-1">
+              <span>📍 ${escHtml(m.location)}</span>
+              <span>🗓 ${formatDate(m.date)}</span>
+            </div>
+            <div class="mt-2">
+              <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.3rem">
+                <span>Match Score</span><strong>${m.similarity_score}%</strong>
+              </div>
+              <div class="confidence-bar">
+                <div class="confidence-bar-fill${m.similarity_score < 40 ? ' low' : ''}" style="width:${m.similarity_score}%"></div>
+              </div>
+            </div>
+            ${m.matched_keywords?.length
+              ? `<div class="mt-2" style="display:flex;gap:.3rem;flex-wrap:wrap">
+                   ${m.matched_keywords.slice(0,5).map(k=>`<span class="badge badge-primary">${escHtml(k)}</span>`).join('')}
+                 </div>`
+              : ''}
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-outline btn-sm" onclick="closeModal('match-modal-overlay');openClaimModal(${m.id})">📋 Claim</button>
+          </div>
+        </div>`;
+    });
+
+    html += `</div>
+      <div style="margin-top:1rem;text-align:right">
+        <button class="btn btn-secondary btn-sm" onclick="instantMatchScan(${itemId})">⚡ Instant Scan (2 credits)</button>
+        <button class="btn btn-warning btn-sm" onclick="enableSmartAlert(${itemId})">🔔 Smart Alert (3 credits)</button>
+      </div>`;
+
+    body.innerHTML = html;
+  } catch (err) {
+    body.innerHTML = `<p style="color:var(--danger)">${err.message}</p>`;
+  }
+}
+
+async function instantMatchScan(itemId) {
+  try {
+    await App.apiPost('/matches/instant', { itemId });
+    App.toast('Instant scan complete! 2 credits deducted.', 'success');
+    showMatches(itemId);
+  } catch (err) {
+    App.toast(err.message, 'error');
+  }
+}
+
+async function enableSmartAlert(itemId) {
+  try {
+    await App.apiPost(`/items/${itemId}/smart-alert`, {});
+    App.toast('Smart Alert enabled! You will be notified when a match appears. (3 credits deducted)', 'success');
+  } catch (err) {
+    App.toast(err.message, 'error');
+  }
+}
+
+// ── Item Actions ─────────────────────────────────────────
+async function deleteItem(id) {
+  if (!confirm('Delete this item? This cannot be undone.')) return;
+  try {
+    await App.apiDelete(`/items/${id}`);
+    App.toast('Item deleted.', 'info');
+    loadItems();
+    loadStats();
+  } catch (err) {
+    App.toast(err.message, 'error');
+  }
+}
+
+async function boostItem(id) {
+  if (!confirm('Boost this item for 48 hours? Costs 10 credits.')) return;
+  try {
+    const data = await App.apiPost(`/items/${id}/boost`, {});
+    App.toast('Item boosted for 48 hours! ⚡', 'success');
+    loadItems();
+    loadStats();
+  } catch (err) {
+    App.toast(err.message, 'error');
+  }
+}
+
+// ── Image Preview ────────────────────────────────────────
+function previewImage(url) {
+  if (!url) return;
+  document.getElementById('img-modal-src').src = url;
+  document.getElementById('img-modal-overlay').classList.remove('hidden');
+}
+
+// ── Notifications ─────────────────────────────────────────
+function toggleNotifications() {
+  const panel = document.getElementById('notif-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) loadNotifications();
+}
+
+async function loadNotifications() {
+  const list = document.getElementById('notif-list');
+  try {
+    const notifs = await App.apiGet('/notifications');
+    const unread = notifs.filter(n => !n.read_at).length;
+    const badge = document.getElementById('notif-badge');
+    if (unread > 0) {
+      badge.classList.remove('hidden');
+      badge.textContent = unread > 9 ? '9+' : unread;
+    } else {
+      badge.classList.add('hidden');
+    }
+
+    if (!notifs.length) {
+      list.innerHTML = '<div class="empty-state" style="padding:1.5rem"><p>No notifications</p></div>';
+      return;
+    }
+
+    list.innerHTML = notifs.map(n => `
+      <div class="notif-item ${n.read_at ? '' : 'unread'}" onclick="markNotifRead(${n.id}, this)">
+        <div class="notif-msg">${escHtml(n.message)}</div>
+        <div class="notif-time">${timeAgo(n.created_at)}</div>
+      </div>`).join('');
+  } catch (err) {
+    list.innerHTML = '<div class="empty-state" style="padding:1.5rem"><p>Failed to load</p></div>';
+  }
+}
+
+async function markNotifRead(id, el) {
+  try {
+    await App.apiPut(`/notifications/${id}/read`, {});
+    el.classList.remove('unread');
+    loadNotifications();
+  } catch (_) {}
+}
+
+async function markAllRead() {
+  try {
+    await App.apiPut('/notifications/read-all', {});
+    loadNotifications();
+  } catch (_) {}
+}
+
+function startNotifPolling() {
+  loadNotifications();
+  notifPollInterval = setInterval(loadNotifications, 10000);
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+function signOut() {
+  auth.signOut().then(() => window.location.href = '/login.html');
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return isNaN(dt) ? d : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function timeAgo(dateStr) {
+  const diff = (Date.now() - new Date(dateStr)) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+// Close notifications when clicking outside
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notif-panel');
+  const btn = document.getElementById('notif-btn');
+  if (panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) {
+    panel.classList.remove('open');
+  }
+});
+</script>
+</body>
+</html>
